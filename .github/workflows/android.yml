@@ -5,40 +5,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-      - name: Install Legacy Libs (libtinfo5)
+      - name: Show all files
+        run: ls -R
+      - name: Install Legacy Libs
         run: |
           wget http://azure.archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.2-0ubuntu2_amd64.deb
-          wget http://azure.archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libncurses5_6.2-0ubuntu2_amd64.deb
-          sudo apt install ./libtinfo5_6.2-0ubuntu2_amd64.deb ./libncurses5_6.2-0ubuntu2_amd64.deb
+          sudo apt install ./libtinfo5_6.2-0ubuntu2_amd64.deb
       - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y build-essential git python3-dev ffmpeg libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev zlib1g-dev openjdk-17-jdk autoconf libtool pkg-config libncursesw5-dev cmake libffi-dev libssl-dev
+          sudo apt install -y build-essential git python3-dev libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev zlib1g-dev openjdk-17-jdk cmake libffi-dev libssl-dev
           pip install --upgrade pip
           pip install buildozer cython==0.29.33
-      - name: List Files and Fix Spec
-        run: |
-          echo "--- Структура проекта ---"
-          ls -R
-          echo "--- Поиск и правка buildozer.spec ---"
-          # Твой вариант с find, чтобы найти файл в любой папке
-          find . -name "buildozer.spec" -exec sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/' {} +
       - name: Build APK
         run: |
-          # Запускаем сборку из той папки, где лежит файл (если он в подпапке)
-          SPEC_PATH=$(find . -name "buildozer.spec" -print -quit)
-          if [ -n "$SPEC_PATH" ]; then
-            cd $(dirname "$SPEC_PATH")
-            buildozer android debug
-          else
-            echo "ОШИБКА: buildozer.spec не найден даже через find!"
+          # Ищем файл в любой папке и переходим туда
+          SPEC_FILE=$(find . -name "buildozer.spec" -print -quit)
+          if [ -z "$SPEC_FILE" ]; then
+            echo "Файл buildozer.spec НЕ НАЙДЕН!"
             exit 1
           fi
+          cd $(dirname "$SPEC_FILE")
+          sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/' buildozer.spec
+          buildozer android debug
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
